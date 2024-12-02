@@ -32,28 +32,13 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .example {
-            font-size: 12px;
-            color: #666;
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Générateur CSV La Poste</h1>
         <form id="csvForm">
-            <textarea id="addressInput" rows="6" placeholder="Collez votre adresse ici. Exemples : 
-Monsieur DELHOURME Daniel
-3 boulevard du Levant
-95520 HERBLAY
-
-ou 
-
-LES BELLEVUES
-Comptabilité
-11 rue du Foin
-74000 ANNECY"></textarea>
+            <textarea id="addressInput" rows="6" placeholder="Collez une adresse ici, sous n'importe quel format"></textarea>
             <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
         </form>
     </div>
@@ -75,8 +60,9 @@ Comptabilité
             infoComplementaire: ''
         };
 
-        const civilites = /monsieur|madame|mr|mme|m\./i;
+        const civilites = /^(monsieur|madame|mr|mme|m\.)/i;
 
+        // Identification de la première ligne (professionnel ou particulier)
         if (!lines[0].toLowerCase().match(civilites)) {
             // Adresse professionnelle
             data.societe = lines[0];
