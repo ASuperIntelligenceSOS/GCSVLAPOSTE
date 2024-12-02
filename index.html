@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur CSV La Poste</title>
+</head>
+<body>
+    <h1>Générateur CSV pour La Poste</h1>
+    <form id="csvForm">
+        <textarea id="addressInput" rows="8" cols="50" placeholder="Collez ici votre adresse"></textarea><br>
+        <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
+    </form>
+    <p id="downloadLink" style="display: none;"></p>
+
+    <script>
+        function generateCSV() {
+            const address = document.getElementById("addressInput").value.trim();
+
+            if (!address) {
+                alert("Veuillez entrer une adresse !");
+                return;
+            }
+
+            const lines = address.split('\n');
+            let civilite = '', nom = '', prenom = '', voie = '', code_postal = '', ville = '', pays = 'France';
+            
+            if (lines.length >= 4) {
+                const nameParts = lines[0].split(' ');
+                civilite = nameParts[0].toLowerCase() === 'madame' ? 'madame' : 'monsieur';
+                nom = nameParts.pop();
+                prenom = nameParts.slice(1).join(' ');
+                voie = lines[1];
+                const postalParts = lines[2].split(' ');
+                code_postal = postalParts[0];
+                ville = postalParts.slice(1).join(' ');
+                if (lines[3]) {
+                    pays = lines[3];
+                }
+            }
+
+            const csvContent = `Nom de la sociÈtÈ;IdentitÈ du destinataire et/ou service;CivilitÈ (autorisÈe: monsieur ou madame);Nom;PrÈnom;*N∞ et libellÈ de voie;*Code postal;*Ville;*Pays;Lieu-dit/BP;Information complÈmentaire
+;;${civilite};${nom};${prenom};${voie};${code_postal};${ville};${pays};;
+`;
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "adresse_laposte.csv");
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
