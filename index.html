@@ -7,122 +7,116 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
             margin: 20px auto;
-            padding: 20px;
+            max-width: 600px;
+            line-height: 1.6;
         }
         .container {
-            background-color: #f5f5f5;
             padding: 20px;
+            border: 1px solid #ccc;
             border-radius: 8px;
+            background-color: #f9f9f9;
         }
         textarea {
             width: 100%;
-            margin: 10px 0;
+            height: 150px;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            margin-bottom: 10px;
             font-size: 14px;
         }
         button {
-            background-color: #1a73e8;
-            color: white;
             padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Générateur CSV La Poste</h1>
-        <form id="csvForm">
-            <textarea id="addressInput" rows="6" placeholder="Collez une adresse ici, sous n'importe quel format"></textarea>
-            <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
-        </form>
+        <h1>Générateur CSV compatible La Poste</h1>
+        <textarea id="addressInput" placeholder="Collez ici l'adresse à convertir"></textarea>
+        <button onclick="generateCSV()">Générer le fichier CSV</button>
     </div>
 
     <script>
-    function parseAddress(text) {
-        const lines = text.trim().split(/\n+/).map(line => line.trim()).filter(line => line);
-        let data = {
-            societe: '',
-            identite: '',
-            civilite: '',
-            nom: '',
-            prenom: '',
-            voie: '',
-            codePostal: '',
-            ville: '',
-            pays: 'France',
-            lieuditBP: '',
-            infoComplementaire: ''
-        };
+        function parseAddress(text) {
+            const lines = text.trim().split(/\n/).map(line => line.trim());
+            let data = {
+                societe: '',
+                identite: '',
+                civilite: '',
+                nom: '',
+                prenom: '',
+                voie: '',
+                codePostal: '',
+                ville: '',
+                pays: 'France',
+                lieuditBP: '',
+                infoComplementaire: ''
+            };
 
-        const civilites = /^(monsieur|madame|mr|mme|m\.)/i;
+            if (lines.length === 0) {
+                alert("Veuillez entrer une adresse.");
+                return null;
+            }
 
-        // Identification de la première ligne (professionnel ou particulier)
-        if (!lines[0].toLowerCase().match(civilites)) {
-            // Adresse professionnelle
-            data.societe = lines[0];
-            data.identite = lines[1] || '';
-            for (let i = 2; i < lines.length; i++) {
-                const line = lines[i];
+            // Identifier si c'est un particulier ou une société
+            const firstLine = lines[0];
+            if (/monsieur|madame|mme|mr|m\./i.test(firstLine)) {
+                // Particulier
+                data.civilite = /madame|mme/i.test(firstLine) ? "madame" : "monsieur";
+                const nameParts = firstLine.replace(/(monsieur|madame|mme|mr|m\.)/i, "").trim().split(" ");
+                data.nom = nameParts.pop().toUpperCase();
+                data.prenom = nameParts.join(" ");
+            } else {
+                // Société
+                data.societe = firstLine;
+                data.identite = lines[1] || '';
+            }
+
+            // Traiter le reste des lignes pour extraire l'adresse
+            lines.forEach(line => {
                 if (/^\d{5}/.test(line)) {
-                    const [codePostal, ...villeParts] = line.split(' ');
+                    const [codePostal, ...villeParts] = line.split(" ");
                     data.codePostal = codePostal;
-                    data.ville = villeParts.join(' ');
-                } else if (/^\d+/.test(line)) {
+                    data.ville = villeParts.join(" ");
+                } else if (/^\d+\s/.test(line)) {
                     data.voie = line;
                 }
-            }
-        } else {
-            // Adresse personnelle
-            const nameLine = lines[0].replace(civilites, '').trim();
-            const nameParts = nameLine.split(' ');
-            data.civilite = lines[0].toLowerCase().includes('madame') ? 'madame' : 'monsieur';
-            data.nom = nameParts.pop().toUpperCase();
-            data.prenom = nameParts.join(' ');
+            });
 
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (/^\d{5}/.test(line)) {
-                    const [codePostal, ...villeParts] = line.split(' ');
-                    data.codePostal = codePostal;
-                    data.ville = villeParts.join(' ');
-                } else if (/^\d+/.test(line)) {
-                    data.voie = line;
-                }
-            }
+            return data;
         }
 
-        return data;
-    }
+        function generateCSV() {
+            const input = document.getElementById("addressInput").value;
+            const addressData = parseAddress(input);
+            if (!addressData) return;
 
-    function generateCSV() {
-        const input = document.getElementById('addressInput').value;
-        if (!input.trim()) {
-            alert('Veuillez entrer une adresse');
-            return;
+            // Construire le CSV
+            const header = "Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire";
+            const dataLine = `${addressData.societe};${addressData.identite};${addressData.civilite};${addressData.nom};${addressData.prenom};${addressData.voie};${addressData.codePostal};${addressData.ville};${addressData.pays};${addressData.lieuditBP};${addressData.infoComplementaire}`;
+            const csvContent = `${header}\n${dataLine}`;
+
+            // Télécharger le fichier
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "adresses_laposte.csv");
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
-
-        const addressData = parseAddress(input);
-
-        const header = 'Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire';
-        const dataLine = `${addressData.societe};${addressData.identite};${addressData.civilite};${addressData.nom};${addressData.prenom};${addressData.voie};${addressData.codePostal};${addressData.ville};${addressData.pays};${addressData.lieuditBP};${addressData.infoComplementaire}`;
-
-        const csvContent = `${header}\n${dataLine}`;
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'adresses_laposte.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
     </script>
 </body>
 </html>
