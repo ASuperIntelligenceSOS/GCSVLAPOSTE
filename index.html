@@ -22,27 +22,40 @@
                 return;
             }
 
+            // Parsing des lignes d'adresse
             const lines = address.split('\n');
-            let civilite = '', nom = '', prenom = '', voie = '', code_postal = '', ville = '', pays = 'France';
-            
+            let nomDeSociete = '';
+            let identite = '';
+            let civilite = '';
+            let nom = '';
+            let prenom = '';
+            let voie = '';
+            let codePostal = '';
+            let ville = '';
+            let pays = 'France'; // Par défaut
+            let lieuDitBP = '';
+            let informationComplementaire = '';
+
+            // Parsing spécifique au modèle attendu
             if (lines.length >= 4) {
                 const nameParts = lines[0].split(' ');
-                civilite = nameParts[0].toLowerCase() === 'madame' ? 'madame' : 'monsieur';
-                nom = nameParts.pop();
-                prenom = nameParts.slice(1).join(' ');
-                voie = lines[1];
+                civilite = nameParts[0].toLowerCase().includes('madame') ? 'madame' : 'monsieur';
+                nom = nameParts.pop(); // Dernier mot = nom
+                prenom = nameParts.slice(1).join(' '); // Les autres mots = prénom
+                voie = lines[1]; // Deuxième ligne = voie
                 const postalParts = lines[2].split(' ');
-                code_postal = postalParts[0];
+                codePostal = postalParts[0];
                 ville = postalParts.slice(1).join(' ');
                 if (lines[3]) {
-                    pays = lines[3];
+                    pays = lines[3]; // Quatrième ligne = pays
                 }
             }
 
-            const csvContent = `Nom de la sociÈtÈ;IdentitÈ du destinataire et/ou service;CivilitÈ (autorisÈe: monsieur ou madame);Nom;PrÈnom;*N∞ et libellÈ de voie;*Code postal;*Ville;*Pays;Lieu-dit/BP;Information complÈmentaire
-;;${civilite};${nom};${prenom};${voie};${code_postal};${ville};${pays};;
-`;
+            // Construction du contenu CSV exact
+            const csvContent = `Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire
+${nomDeSociete};${identite};${civilite};${nom};${prenom};${voie};${codePostal};${ville};${pays};${lieuDitBP};${informationComplementaire}`;
 
+            // Création et téléchargement du fichier
             const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
