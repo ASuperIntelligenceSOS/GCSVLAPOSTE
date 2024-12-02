@@ -4,68 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Générateur CSV La Poste</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #1a73e8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .example {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Générateur CSV pour La Poste</h1>
-    <form id="csvForm">
-        <textarea id="addressInput" rows="8" cols="50" placeholder="Collez ici votre adresse"></textarea><br>
-        <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
-    </form>
-    <p id="downloadLink" style="display: none;"></p>
+    <div class="container">
+        <h1>Générateur CSV La Poste</h1>
+        <form id="csvForm">
+            <textarea id="addressInput" rows="6" placeholder="Collez votre adresse ici.
+Exemples de formats acceptés:
+Monsieur DELHOURME Daniel
+3 boulevard du Levant
+95520 HERBLAY
+
+ou
+
+LES BELLEVUES
+Comptabilité
+11 rue du Foin
+74000 ANNECY"></textarea>
+            <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
+        </form>
+    </div>
 
     <script>
-        function generateCSV() {
-            const address = document.getElementById("addressInput").value.trim();
+    function parseAddress(text) {
+        const lines = text.trim().split(/[\n,]+/).map(line => line.trim()).filter(line => line);
+        let data = {
+            societe: '',
+            identite: '',
+            civilite: '',
+            nom: '',
+            prenom: '',
+            voie: '',
+            codePostal: '',
+            ville: '',
+            pays: 'France',
+            lieuditBP: '',
+            infoComplementaire: ''
+        };
 
-            if (!address) {
-                alert("Veuillez entrer une adresse !");
-                return;
-            }
-
-            // Parsing des lignes d'adresse
-            const lines = address.split('\n');
-            let nomDeSociete = '';
-            let identite = '';
-            let civilite = '';
-            let nom = '';
-            let prenom = '';
-            let voie = '';
-            let codePostal = '';
-            let ville = '';
-            let pays = 'France'; // Par défaut
-            let lieuDitBP = '';
-            let informationComplementaire = '';
-
-            // Parsing spécifique au modèle attendu
-            if (lines.length >= 4) {
-                const nameParts = lines[0].split(' ');
-                civilite = nameParts[0].toLowerCase().includes('madame') ? 'madame' : 'monsieur';
-                nom = nameParts.pop(); // Dernier mot = nom
-                prenom = nameParts.slice(1).join(' '); // Les autres mots = prénom
-                voie = lines[1]; // Deuxième ligne = voie
-                const postalParts = lines[2].split(' ');
-                codePostal = postalParts[0];
-                ville = postalParts.slice(1).join(' ');
-                if (lines[3]) {
-                    pays = lines[3]; // Quatrième ligne = pays
+        // Détection si c'est une adresse professionnelle
+        const isPro = !lines[0].toLowerCase().match(/monsieur|madame|mme|mr|m\./);
+        
+        if (isPro) {
+            // Cas professionnel
+            data.societe = lines[0].toUpperCase();
+            data.identite = lines[1] || '';
+            
+            // Traitement de l'adresse
+            for (let i = 2; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.match(/^\d{5}/)) {
+                    const [codePostal, ...villeParts] = line.split(' ');
+                    data.codePostal = codePostal;
+                    data.ville = villeParts.join(' ').trim();
+                } else if (line.match(/^\d+/)) {
+                    data.voie = line;
                 }
             }
+        } else {
+            // Cas particulier
+            const firstLine = lines[0];
+            // Détection civilité
+            if (firstLine.toLowerCase().includes('madame') || firstLine.toLowerCase().includes('mme')) {
+                data.civilite = 'madame';
+            } else {
+                data.civilite = 'monsieur';
+            }
 
-            // Construction du contenu CSV exact
-            const csvContent = `Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire
-${nomDeSociete};${identite};${civilite};${nom};${prenom};${voie};${codePostal};${ville};${pays};${lieuDitBP};${informationComplementaire}`;
+            // Extraction nom et prénom
+            const nameParts = firstLine
+                .replace(/monsieur|madame|mme|mr|m\./i, '')
+                .trim()
+                .split(' ')
+                .filter(part => part);
 
-            // Création et téléchargement du fichier
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "adresse_laposte.csv");
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            data.nom = nameParts[0].toUpperCase();
+            data.prenom = nameParts.slice(1).join(' ');
+            data.identite = `${data.prenom} ${data.nom}`.trim();
+
+            // Traitement de l'adresse
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.match(/^\d{5}/)) {
+                    const [codePostal, ...villeParts] = line.split(' ');
+                    data.codePostal = codePostal;
+                    data.ville = villeParts.join(' ').trim();
+                } else if (line.match(/^\d+/)) {
+                    data.voie = line;
+                }
+            }
         }
+
+        return data;
+    }
+
+    function generateCSV() {
+        const input = document.getElementById('addressInput').value;
+        if (!input.trim()) {
+            alert('Veuillez entrer une adresse');
+            return;
+        }
+
+        const addressData = parseAddress(input);
+        
+        // Création de la ligne d'en-tête exacte demandée par La Poste
+        const header = 'Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire';
+        
+        // Création de la ligne de données
+        const dataLine = `${addressData.societe};${addressData.identite};${addressData.civilite};${addressData.nom};${addressData.prenom};${addressData.voie};${addressData.codePostal};${addressData.ville};${addressData.pays};${addressData.lieuditBP};${addressData.infoComplementaire}`;
+        
+        // Combinaison des lignes
+        const csvContent = `${header}\n${dataLine}`;
+        
+        // Création et téléchargement du fichier
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'adresses_laposte.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
     </script>
 </body>
 </html>
