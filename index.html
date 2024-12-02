@@ -1,87 +1,145 @@
-<script>
-    function parseAddress(text) {
-        const lines = text.trim().split(/[\n,]+/).map(line => line.trim()).filter(line => line);
-        let data = {
-            societe: '',
-            identite: '',
-            civilite: '',
-            nom: '',
-            prenom: '',
-            voie: '',
-            codePostal: '',
-            ville: '',
-            pays: 'France',
-            lieuditBP: '',
-            infoComplementaire: ''
-        };
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur CSV La Poste</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #1a73e8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Générateur CSV La Poste</h1>
+        <form id="csvForm">
+            <textarea id="addressInput" rows="6" placeholder="Collez votre adresse ici.
+Exemples de formats acceptés :
+Monsieur DELHOURME Daniel
+3 boulevard du Levant
+95520 HERBLAY
 
-        // Vérifier si l'adresse est pour un particulier ou professionnel
-        const isPro = !lines[0].toLowerCase().match(/monsieur|madame|mme|mr|m\./);
-        if (isPro) {
-            // Adresse professionnelle
-            data.societe = lines[0];
-            data.identite = lines[1] || '';
-            for (let i = 2; i < lines.length; i++) {
-                const line = lines[i];
-                if (/^\d{5}/.test(line)) {
-                    const [codePostal, ...villeParts] = line.split(' ');
-                    data.codePostal = codePostal;
-                    data.ville = villeParts.join(' ');
-                } else if (/^\d+/.test(line)) {
-                    data.voie = line;
+ou
+
+LES BELLEVUES
+Comptabilité
+11 rue du Foin
+74000 ANNECY"></textarea>
+            <button type="button" onclick="generateCSV()">Générer le fichier CSV</button>
+        </form>
+    </div>
+
+    <script>
+        function parseAddress(text) {
+            const lines = text.trim().split(/[\n,]+/).map(line => line.trim()).filter(line => line);
+            let data = {
+                societe: '',
+                identite: '',
+                civilite: '',
+                nom: '',
+                prenom: '',
+                voie: '',
+                codePostal: '',
+                ville: '',
+                pays: 'France',
+                lieuditBP: '',
+                infoComplementaire: ''
+            };
+
+            // Vérifier si l'adresse est pour un particulier ou professionnel
+            const isPro = !lines[0].toLowerCase().match(/monsieur|madame|mme|mr|m\./);
+            if (isPro) {
+                // Adresse professionnelle
+                data.societe = lines[0];
+                data.identite = lines[1] || '';
+                for (let i = 2; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (/^\d{5}/.test(line)) {
+                        const [codePostal, ...villeParts] = line.split(' ');
+                        data.codePostal = codePostal;
+                        data.ville = villeParts.join(' ');
+                    } else if (/^\d+/.test(line)) {
+                        data.voie = line;
+                    }
                 }
-            }
-        } else {
-            // Adresse particulière
-            const firstLine = lines[0];
-            if (/madame|mme/i.test(firstLine)) {
-                data.civilite = 'madame';
             } else {
-                data.civilite = 'monsieur';
-            }
-            const nameParts = firstLine.replace(/monsieur|madame|mme|mr|m\./i, '').trim().split(' ');
-            data.nom = nameParts.pop().toUpperCase();
-            data.prenom = nameParts.join(' ');
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (/^\d{5}/.test(line)) {
-                    const [codePostal, ...villeParts] = line.split(' ');
-                    data.codePostal = codePostal;
-                    data.ville = villeParts.join(' ');
-                } else if (/^\d+/.test(line)) {
-                    data.voie = line;
+                // Adresse particulière
+                const firstLine = lines[0];
+                if (/madame|mme/i.test(firstLine)) {
+                    data.civilite = 'madame';
+                } else {
+                    data.civilite = 'monsieur';
+                }
+                const nameParts = firstLine.replace(/monsieur|madame|mme|mr|m\./i, '').trim().split(' ');
+                data.nom = nameParts.pop().toUpperCase();
+                data.prenom = nameParts.join(' ');
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (/^\d{5}/.test(line)) {
+                        const [codePostal, ...villeParts] = line.split(' ');
+                        data.codePostal = codePostal;
+                        data.ville = villeParts.join(' ');
+                    } else if (/^\d+/.test(line)) {
+                        data.voie = line;
+                    }
                 }
             }
-        }
-        return data;
-    }
-
-    function generateCSV() {
-        const input = document.getElementById('addressInput').value;
-        if (!input.trim()) {
-            alert('Veuillez entrer une adresse');
-            return;
+            return data;
         }
 
-        const addressData = parseAddress(input);
+        function generateCSV() {
+            const input = document.getElementById('addressInput').value;
+            if (!input.trim()) {
+                alert('Veuillez entrer une adresse');
+                return;
+            }
 
-        // Ligne d'en-tête
-        const header = 'Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire';
+            const addressData = parseAddress(input);
 
-        // Ligne de données
-        const dataLine = `${addressData.societe};${addressData.identite};${addressData.civilite};${addressData.nom};${addressData.prenom};${addressData.voie};${addressData.codePostal};${addressData.ville};${addressData.pays};${addressData.lieuditBP};${addressData.infoComplementaire}`;
+            // Ligne d'en-tête
+            const header = 'Nom de la société;Identité du destinataire et/ou service;Civilité (autorisée: monsieur ou madame);Nom;Prénom;N° et libellé de voie;Code postal;Ville;Pays;Lieu-dit/BP;Information complémentaire';
 
-        // Combiner en contenu CSV
-        const csvContent = `${header}\n${dataLine}`;
+            // Ligne de données
+            const dataLine = `${addressData.societe};${addressData.identite};${addressData.civilite};${addressData.nom};${addressData.prenom};${addressData.voie};${addressData.codePostal};${addressData.ville};${addressData.pays};${addressData.lieuditBP};${addressData.infoComplementaire}`;
 
-        // Création du fichier CSV
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'adresse_laposte.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-</script>
+            // Combiner en contenu CSV
+            const csvContent = `${header}\n${dataLine}`;
+
+            // Création du fichier CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'adresse_laposte.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
